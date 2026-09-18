@@ -5,5 +5,5 @@ export const authRouter = express.Router();
 /* POST - /api/auth/register */
 authRouter.post("/register", userRegisterController);
 /* POST - /api/auth/get-me */
-authRouter.post("/get-me", authmiddleware, getMeController);
+authRouter.get("/get-me", authmiddleware, getMeController);
 //# sourceMappingURL=auth.router.js.map

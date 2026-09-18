@@ -9,4 +9,4 @@ export const authRouter = express.Router();
 authRouter.post("/register", userRegisterController)
 
 /* POST - /api/auth/get-me */
-authRouter.post("/get-me",authmiddleware,getMeController)
+authRouter.get("/get-me",authmiddleware,getMeController)
