@@ -5,15 +5,14 @@ import jwt from "jsonwebtoken";
 import config from "../config/env.config.js";
 import { hashPassword } from "../utils/password.utils.js";
 
-
 export async function userRegisterController(req:Request,res:Response):Promise<void> {
   const { email, password, username } = req.body;
 
   const isUserAlreadyExists = await userModel.findOne({
       $or: [
-      { username },
-      {email} 
-      ] // Yaani find through either username or email .
+      { username }, //condition 1
+      {email} //condition 2
+      ] // Yaani find through either username or email field .
     }
   )
 
@@ -57,3 +56,24 @@ export async function userRegisterController(req:Request,res:Response):Promise<v
   })
   
 }
+
+
+
+
+
+export async function getMeController(req:Request,res:Response):Promise<void> {
+  const userData = await userModel.findOne({ _id: req.userId })
+
+  if (!userData) {
+    res.status(StatusCode.NOT_FOUND).json({
+      message:"User not found"
+    });
+    return;
+  }
+
+  res.status(StatusCode.OK).json({
+    userData,
+  })
+}
+
+

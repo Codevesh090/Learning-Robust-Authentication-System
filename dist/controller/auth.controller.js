@@ -7,9 +7,9 @@ export async function userRegisterController(req, res) {
     const { email, password, username } = req.body;
     const isUserAlreadyExists = await userModel.findOne({
         $or: [
-            { username },
-            { email }
-        ] // Yaani find through either username or email .
+            { username }, //condition 1
+            { email } //condition 2
+        ] // Yaani find through either username or email field .
     });
     if (isUserAlreadyExists) {
         res.status(StatusCode.CONFLICT).json({
@@ -41,6 +41,18 @@ export async function userRegisterController(req, res) {
         message: "User created successfully",
         user: user,
         token: token
+    });
+}
+export async function getMeController(req, res) {
+    const userData = await userModel.findOne({ _id: req.userId });
+    if (!userData) {
+        res.status(StatusCode.NOT_FOUND).json({
+            message: "User not found"
+        });
+        return;
+    }
+    res.status(StatusCode.OK).json({
+        userData,
     });
 }
 //# sourceMappingURL=auth.controller.js.map
