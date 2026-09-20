@@ -3,9 +3,9 @@ import { StatusCode } from "../constants/statusCodes.constant.js";
 import jwt from "jsonwebtoken";
 import config from "../config/env.config.js";
 import { hashPassword } from "../utils/password.utils.js";
-import { strict } from "assert";
 import { sessionModel } from "../models/session.model.js";
-import crypto from "node:crypto";
+import { refreshTokenHashing } from "../utils/refreshTokenHash.utils.js";
+// register handler
 export async function userRegisterController(req, res) {
     const { email, password, username } = req.body;
     const isUserAlreadyExists = await userModel.findOne({
@@ -41,8 +41,7 @@ export async function userRegisterController(req, res) {
     // made the refreshToken and send it in cookies on client side .
     const refreshToken = jwt.sign({ userId: user._id }, config.SECRET_KEY, { expiresIn: "7d" });
     // Hashed the refresh Token , such that if db got compromised and refreshToken is leaked then also no hacker can see any users Refresh Token .
-    const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
-    ;
+    const refreshTokenHash = refreshTokenHashing(refreshToken);
     // Its just a type check such that ip and userAgent can't be undefined .
     const ip = req.ip;
     const userAgent = req.headers["user-agent"];
@@ -76,6 +75,10 @@ export async function userRegisterController(req, res) {
         accessToken
     });
 }
+// login handler
+export async function userLoginController(req, res) {
+}
+// getMe handler
 export async function getMeController(req, res) {
     const userData = await userModel.findOne({ _id: req.userId });
     if (!userData) {
@@ -98,6 +101,7 @@ export async function refreshTokenController(req, res) {
         });
         return;
     }
+    // decoded it | We kept this decoding before hashing , kyuki agar server verify hi nahi kar paaya , ki usne yeh token nahi banaya tha . Toh hume db par request karne ki koi need nahi hai , we saved one db request/operation .
     const decoded = jwt.verify(refreshToken, config.SECRET_KEY);
     if (typeof decoded.userId !== "string") {
         res.status(StatusCode.UNAUTHORIZED).json({
@@ -105,18 +109,97 @@ export async function refreshTokenController(req, res) {
         });
         return;
     }
-    const accessToken = jwt.sign({ userId: decoded.userId }, config.SECRET_KEY, { expiresIn: "15m" });
-    // we will generate new Refresh tojen
+    // created the hash
+    const refreshTokenHash = refreshTokenHashing(refreshToken);
+    // found the session document in db which has this hash
+    const session = await sessionModel.findOne({
+        refreshTokenHash,
+        revoked: false //means abhi bhi session active hai .
+    });
+    // if not found means session is either invalidated means user logged out with this refresh token .
+    if (!session) {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "Invalid refresh Token"
+        });
+        return;
+    }
+    // we will generate new Refresh token
     const newRefreshToken = jwt.sign({ userId: decoded.userId }, config.SECRET_KEY, { expiresIn: "7days" });
+    // update the refresh token in the database 
+    session.refreshTokenHash = newRefreshToken;
+    await session.save();
+    // set the newRefreshToken in the cookie
     res.cookie("refreshToken", newRefreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000
     });
+    // generate a new access token
+    const accessToken = jwt.sign({ userId: decoded.userId }, config.SECRET_KEY, { expiresIn: "10m" });
+    // send back to client
     res.status(StatusCode.CREATED).json({
         message: "Access token refreshed successfully",
         accessToken
     });
+    // Here , we    |  Took the refresh token and checked it is valid or not  ->  decoded it means server checked ki usne kabhi yeh token pehle banaya tha kya . If no then wahi ruk jaayega and if yes then next    ->   We hashed the refresh token and tried to find the doc in session table   ->  And if it does not found , it means that session does not exist anymore , so it will stop there  ->  But if session exist then generate the new refresh token , update the db and then only generate the new access token.
+    // Generation of new Refresh Token and inavlidation the old refresh token in db with the new access token called as token rotation . Yaani refresh token ko update karte rehna with new access token called as token rotation .
 }
+// logout handler
+export async function logoutController(req, res) {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "Refresh Token not found"
+        });
+        return;
+    }
+    ;
+    const refreshTokenHash = refreshTokenHashing(refreshToken); // same data gives same hash when we use "crypto" which is node built-in hashing package .
+    const session = await sessionModel.findOne({
+        refreshTokenHash,
+        revoked: false
+    });
+    if (!session) {
+        res.status(StatusCode.NOT_FOUND).json({
+            message: "Session not found"
+        });
+        return;
+    }
+    session.revoked = true;
+    await session.save();
+    res.clearCookie(refreshToken);
+    res.status(StatusCode.CREATED).json({
+        message: "Logged out successfully"
+    });
+    // Yaha humne    |    Took the refreshToken from cookies   ->  Created its hash through crypto  ->  Found that document that contain this refreshTokenHash  ->   Invalidated the Refresh Token in session means closed/revoked the session    ->   Removed the refreshToken from the cookies    ->    And logged out successfully
+}
+// logout-all handler
+export async function logoutAllController(req, res) {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "Invalid Refresh Token"
+        });
+        return;
+    }
+    const decoded = jwt.verify(refreshToken, config.SECRET_KEY);
+    if (typeof decoded.userId !== "string") {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "Invalid token payload"
+        });
+        return;
+    }
+    const session = await sessionModel.findOneAndUpdate({
+        user: decoded.userId,
+        revoked: false
+    }, {
+        revoked: true
+    });
+    res.clearCookie(refreshToken);
+    res.status(StatusCode.CREATED).json({
+        message: "Log out of all devices successfully"
+    });
+}
+;
 //# sourceMappingURL=auth.controller.js.map
