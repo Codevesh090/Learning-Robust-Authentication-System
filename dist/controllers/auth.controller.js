@@ -2,7 +2,7 @@ import { userModel } from "../models/user.model.js";
 import { StatusCode } from "../constants/statusCodes.constant.js";
 import jwt from "jsonwebtoken";
 import config from "../config/env.config.js";
-import { hashPassword } from "../utils/password.utils.js";
+import { hashPassword, verifyPassword } from "../utils/password.utils.js";
 import { sessionModel } from "../models/session.model.js";
 import { refreshTokenHashing } from "../utils/refreshTokenHash.utils.js";
 // register handler
@@ -77,6 +77,50 @@ export async function userRegisterController(req, res) {
 }
 // login handler
 export async function userLoginController(req, res) {
+    const { email, password } = req.body;
+    const user = await userModel.findOne({
+        email
+    });
+    if (!user) {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "User not found , please sign up to continue"
+        });
+        return;
+    }
+    if (!verifyPassword(password, user?.password)) {
+        res.status(StatusCode.UNAUTHORIZED).json({
+            message: "Password is incorrect, Pleae try again"
+        });
+        return;
+    }
+    const refreshToken = jwt.sign({ userId: user._id }, config.SECRET_KEY, { expiresIn: "7d" });
+    const refreshTokenHash = refreshTokenHashing(refreshToken);
+    const ip = req.ip;
+    const userAgent = req.headers["user-agent"];
+    if (!ip || !userAgent) {
+        res.status(StatusCode.BAD_REQUEST).json({
+            message: "Unable to determine client information"
+        });
+        return;
+    }
+    const session = await sessionModel.create({
+        user: user._id,
+        refreshTokenHash,
+        ip,
+        userAgent
+    });
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    const accessToken = jwt.sign({ userId: user._id, sessionId: session._id }, config.SECRET_KEY, { expiresIn: "10m" });
+    res.status(StatusCode.CREATED).json({
+        message: "User Logged In successfully",
+        user,
+        accessToken,
+    });
 }
 // getMe handler
 export async function getMeController(req, res) {
