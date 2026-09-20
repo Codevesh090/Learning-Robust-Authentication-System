@@ -1,7 +1,7 @@
 import express from "express";
-import { getMeController, userRegisterController } from "../controller/auth.controller.js";
+import { getMeController, userRegisterController } from "../controllers/auth.controller.js";
 import { authmiddleware } from "../middlewares/auth.middleware.js";
-import { refreshTokenController } from "../controller/auth.controller.js"; "";
+import { refreshTokenController } from "../controllers/auth.controller.js"; "";
 
 
 export const authRouter = express.Router();

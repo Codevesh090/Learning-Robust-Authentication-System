@@ -4,8 +4,8 @@ import jwt from "jsonwebtoken";
 import config from "../config/env.config.js";
 import { hashPassword } from "../utils/password.utils.js";
 import { strict } from "assert";
-import crypto from "node:crypto";
 import { sessionModel } from "../models/session.model.js";
+import crypto from "node:crypto";
 export async function userRegisterController(req, res) {
     const { email, password, username } = req.body;
     const isUserAlreadyExists = await userModel.findOne({
