@@ -1,0 +1,44 @@
+import nodemailer from "nodemailer";
+import config from "../config/env.config.js";
+
+// Through this we can authenticate our server to SMPT server of google through passing credentials and then connect to that SMTP server .
+export const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    type: 'OAuth2',
+    user: config.GOOGLE_USER,
+    clientId: config.GOOGLE_CLIENT_ID,
+    clientSecret: config.GOOGLE_CLIENT_SECRET,
+    refreshToken: config.GOOGLE_REFRESH_TOKEN,
+  },
+});
+
+
+// Verify the connection configuration
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('Error connecting to email server:', error);
+  } else {
+    console.log('Email server is ready to send messages');
+  }
+});
+
+
+
+// Function which we can call with arguments like what to send and who to send . 
+export const sendEmail = async (to:string, subject:string, text:string, html:string) => {
+  try {
+    const info = await transporter.sendMail({
+      from: `"Your Name" <${config.GOOGLE_USER}>`, // sender address
+      to, // list of receivers
+      subject, // Subject line
+      text, // plain text body
+      html, // html body
+    });
+
+    console.log('Message sent: %s', info.messageId);
+    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};

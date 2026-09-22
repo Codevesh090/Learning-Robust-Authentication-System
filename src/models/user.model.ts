@@ -3,7 +3,8 @@ import mongoose , {Model} from "mongoose";
 interface Iuser {
   username: string,
   email: string,
-  password : string
+  password: string,
+  verified: boolean
 }
 
 type UserModel = Model<Iuser>
@@ -23,6 +24,10 @@ const userSchema = new mongoose.Schema<Iuser,UserModel>({
     type: String,
     required: [true, "password is required"],
     select: false,
+  },
+  verified: {
+    type:Boolean,
+    default:false
   }
 }, {
   timestamps:true

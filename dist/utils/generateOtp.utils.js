@@ -1,0 +1,5 @@
+import crypto from "node:crypto";
+export async function generateOtp() {
+    return crypto.randomInt(100000, 1000000).toString();
+}
+//# sourceMappingURL=generateOtp.utils.js.map

@@ -5,4 +5,6 @@ export declare function getMeController(req: Request, res: Response): Promise<vo
 export declare function refreshTokenController(req: Request, res: Response): Promise<void>;
 export declare function logoutController(req: Request, res: Response): Promise<void>;
 export declare function logoutAllController(req: Request, res: Response): Promise<void>;
+export declare function sendVerificationOtpController(req: Request, res: Response): Promise<void>;
+export declare function verifyOtpController(req: Request, res: Response): Promise<void>;
 //# sourceMappingURL=auth.controller.d.ts.map
