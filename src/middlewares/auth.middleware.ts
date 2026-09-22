@@ -10,16 +10,16 @@ interface JwtPayload {
 
 export async function authmiddleware(req:Request, res: Response, next: NextFunction) {
   try {
-    const token = req.cookies.token;
+    const accessToken = req.headers.authorization?.split(" ")[1];   // because client sends access token in headers with the request .  So, token comes out like this         Authorization: Bearer eyJhbGciOiJIUzI1NiIs...     So,we split Bearer and the token eyJhb....  through " " and took the token present at index 1 and put it in the accessToken variable .
 
-    if (!token) {
+    if (!accessToken) {
       res.status(StatusCode.UNAUTHORIZED).json({
         message: "Invalid token"
       });
       return;
     }
 
-    const decoded = jwt.verify(token, config.SECRET_KEY) as JwtPayload; // decoded is of type JwtPayload
+    const decoded = jwt.verify(accessToken, config.SECRET_KEY) as JwtPayload; // decoded is of type JwtPayload
 
     if (typeof decoded.userId !== "string") {
       res.status(StatusCode.UNAUTHORIZED).json({
@@ -32,8 +32,15 @@ export async function authmiddleware(req:Request, res: Response, next: NextFunct
 
     next();
   } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      res.status(StatusCode.UNAUTHORIZED).json({
+        message: "Access token expired"
+    });
+    return;
+    } // if token expired then give this error .
+    
     res.status(StatusCode.UNAUTHORIZED).json({
-      message: "Invalid or expired token"
+      message: "Invalid access token"  // else the token is invalid
     });
     return;
   }

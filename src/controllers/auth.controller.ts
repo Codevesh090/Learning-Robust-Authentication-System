@@ -61,8 +61,7 @@ export async function userRegisterController(req:Request,res:Response):Promise<v
   res.status(StatusCode.CREATED).json({
     message: "Account created successfully. OTP sent to your email.Please verify",
     user: {
-      userId: user._id,
-      email
+      userId: user._id
     }, // we will send email and userId to the client when user signUp
   })
   
@@ -77,8 +76,9 @@ export async function userLoginController(req: Request, res: Response) {
 
   const user = await userModel.findOne({
     email
-  });
+  }).select("+password");
 
+  
   if (!user) {
     res.status(StatusCode.UNAUTHORIZED).json({
       message: "User not found , please sign up to continue"
@@ -93,7 +93,7 @@ export async function userLoginController(req: Request, res: Response) {
     return;
   }
 
-  if (!verifyPassword(password, user?.password)) {
+  if (!verifyPassword(password, user.password)) {
     res.status(StatusCode.UNAUTHORIZED).json({
       message: "Password is incorrect, Pleae try again"
     });
@@ -319,7 +319,6 @@ export async function logoutAllController(req:Request,res:Response) {
 
 
 
-
 // send-Verification-Otp handler
 export async function sendVerificationOtpController(req: Request, res: Response) {
   const { userId } = req.body;
@@ -340,9 +339,11 @@ export async function verifyOtpController(req: Request, res: Response) {
   const { userId, otp } = req.body;
 
   const verification = await otpModel.findOne({
-    userId
+    user:userId
   });
 
+  console.log(verification);
+  
   if (!verification) {
     res.status(StatusCode.BAD_REQUEST).json({
       message: "message not found"

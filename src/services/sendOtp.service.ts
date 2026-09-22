@@ -19,7 +19,7 @@ export async function sendOtp(userId: string) {
   await otpModel.deleteMany({  // before creating new otp , delete all old otp . Such that 1 otp at a time per user rahe
     user:userId
   });
-    
+
   await otpModel.create({
     user: userId,
     otpHash: hashOtp,
