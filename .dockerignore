@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.gitignore
+*.pem
+*.key
+extra.md
+README.md
+.DS_Store
